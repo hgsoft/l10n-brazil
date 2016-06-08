@@ -74,7 +74,7 @@ class NFe200(FiscalDocument):
             for inv_line in inv.invoice_line:
                 i += 1
                 self.det = self._get_Det()
-                
+
                 percent = 0.0
                 if inv.amount_gross > 0:
                     percent = inv_line.price_gross / inv.amount_gross
@@ -117,6 +117,7 @@ class NFe200(FiscalDocument):
             self._purchase_information(cr, uid, ids, inv, context)
             self._additional_information(cr, uid, ids, inv, context)
             self._total(cr, uid, ids, inv, total_tax, context)
+            self._export(cr, uid, inv, inv, context)
 
             # Gera Chave da NFe
             self.nfe.gera_nova_chave()
@@ -131,7 +132,7 @@ class NFe200(FiscalDocument):
         #
         self.nfe.infNFe.ide.cUF.valor = company.state_id and company.state_id.ibge_code or ''
         self.nfe.infNFe.ide.cNF.valor = ''
-        self.nfe.infNFe.ide.natOp.valor = inv.cfop_ids[0].small_name or ''
+        self.nfe.infNFe.ide.natOp.valor = inv.fiscal_category_id.name or ''
         self.nfe.infNFe.ide.indPag.valor = inv.payment_term and inv.payment_term.indPag or '2'
         self.nfe.infNFe.ide.mod.valor  = inv.fiscal_document_id.code or ''
         self.nfe.infNFe.ide.serie.valor = inv.document_serie_id.code or ''
@@ -191,7 +192,7 @@ class NFe200(FiscalDocument):
             self.nfref.refNF.mod.valor = inv_related.fiscal_document_id and inv_related.fiscal_document_id.code or ''
             self.nfref.refNF.serie.valor = inv_related.serie or ''
             self.nfref.refNF.nNF.valor = inv_related.internal_number or ''
-            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie, 
+            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie,
                     inv_related.internal_number, inv_related.date)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
 
@@ -207,11 +208,11 @@ class NFe200(FiscalDocument):
                 self.nfref.refNFP.CNPJ.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv_related.cnpj_cpf or '')
             else:
                 self.nfref.refNFP.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv_related.cnpj_cpf or '')
-            
-            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie, 
+
+            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie,
                     inv_related.internal_number, inv_related.date)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
-            
+
         elif inv_related.document_type == 'nfe':
             self.nfref.refNFe.valor = inv_related.access_key or ''
             nfe_key = inv_related.access_key
@@ -227,7 +228,7 @@ class NFe200(FiscalDocument):
             self.nfref.refECF.mod.valor = inv_related.fiscal_document_id and inv_related.fiscal_document_id.code or ''
             self.nfref.refECF.nECF.valor = inv_related.internal_number
             self.nfref.refECF.nCOO.valor = inv_related.serie
-            info = u'NFe Ref: ECF: {0} COO: {1}|'.format(inv_related.internal_number, 
+            info = u'NFe Ref: ECF: {0} COO: {1}|'.format(inv_related.internal_number,
                     inv_related.serie)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
 
@@ -276,11 +277,14 @@ class NFe200(FiscalDocument):
         if inv.partner_id.country_id.id != company.country_id.id:
             address_invoice_state_code = 'EX'
             address_invoice_city = 'Exterior'
-            partner_cep = ''
+            address_invoice_city_code = '9999999'
         else:
             address_invoice_state_code = inv.partner_id.state_id.code
             address_invoice_city = inv.partner_id.l10n_br_city_id.name or ''
-            partner_cep = re.sub('[%s]' % re.escape(string.punctuation), '', str(inv.partner_id.zip or '').replace(' ',''))
+            address_invoice_city_code = ('%s%s') % (
+                inv.partner_id.state_id.ibge_code,
+                inv.partner_id.l10n_br_city_id.ibge_code)
+            partner_cep = re.sub('[^0-9]', '', inv.partner_id.zip or '')
 
         # Se o ambiente for de teste deve ser
         # escrito na razão do destinatário
@@ -303,12 +307,12 @@ class NFe200(FiscalDocument):
         else:
             self.nfe.infNFe.dest.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv.partner_id.cnpj_cpf or '')
             self.nfe.infNFe.dest.indIEDest.valor = '9'
-            
+
         self.nfe.infNFe.dest.enderDest.xLgr.valor = inv.partner_id.street or ''
         self.nfe.infNFe.dest.enderDest.nro.valor = inv.partner_id.number or ''
         self.nfe.infNFe.dest.enderDest.xCpl.valor = inv.partner_id.street2 or ''
         self.nfe.infNFe.dest.enderDest.xBairro.valor = inv.partner_id.district or 'Sem Bairro'
-        self.nfe.infNFe.dest.enderDest.cMun.valor = '%s%s' % (inv.partner_id.state_id.ibge_code, inv.partner_id.l10n_br_city_id.ibge_code)
+        self.nfe.infNFe.dest.enderDest.cMun.valor = address_invoice_city_code
         self.nfe.infNFe.dest.enderDest.xMun.valor = address_invoice_city
         self.nfe.infNFe.dest.enderDest.UF.valor = address_invoice_state_code
         self.nfe.infNFe.dest.enderDest.CEP.valor = partner_cep
@@ -344,7 +348,7 @@ class NFe200(FiscalDocument):
         self.det.prod.vFrete.valor = str("%.2f" % inv_line.freight_value)
         self.det.prod.vSeg.valor = str("%.2f" % inv_line.insurance_value)
         self.det.prod.vDesc.valor = str("%.2f" % inv_line.discount_value)
-        self.det.prod.vOutro.valor = str("%.2f" % inv_line.other_costs_value)        
+        self.det.prod.vOutro.valor = str("%.2f" % inv_line.other_costs_value)
         self.det.imposto.vTotTrib.valor = str("%.2f" % total_tax)
         #
         # Produto entra no total da NF-e
@@ -511,7 +515,7 @@ class NFe200(FiscalDocument):
 
         self.nfe.infNFe.transp.veicTransp.placa.valor = inv.vehicle_plate or ''
         self.nfe.infNFe.transp.veicTransp.UF.valor = inv.vehicle_state_id.code or ''
-             
+
 
     def _weight_data(self, cr, uid, ids, inv, context=None):
         #
@@ -523,10 +527,10 @@ class NFe200(FiscalDocument):
         self.vol.nVol.valor = inv.notation_of_packages or ''
         self.vol.pesoL.valor = str("%.2f" % inv.weight)
         self.vol.pesoB.valor = str("%.2f" % inv.weight_net)
-    
-    
+
+
     def _purchase_information(self, cr, uid, ids, inv, context=None):
-        
+
         # Informações de compra
         self.nfe.infNFe.compra.xPed.valor = inv.name or ''
         if self.nfe.infNFe.compra.xPed.valor:
@@ -571,6 +575,15 @@ class NFe200(FiscalDocument):
         self.nfe.infNFe.total.ICMSTot.vOutro.valor = str("%.2f" % inv.amount_costs)
         self.nfe.infNFe.total.ICMSTot.vNF.valor = str("%.2f" % inv.amount_total)
         self.nfe.infNFe.total.ICMSTot.vTotTrib.valor = str("%.2f" % total_tax)
+
+    def _export(self, cr, uid, ids, invoice, context=None):
+        "Informações de exportação"
+        self.nfe.infNFe.exporta.UFSaidaPais.valor = (
+            invoice.shipping_state_id.code or '')
+        self.nfe.infNFe.exporta.xLocExporta.valor = (
+            invoice.shipping_location or '')
+        self.nfe.infNFe.exporta.xLocDespacho.valor = (
+            invoice.expedition_location or '')
 
     def get_NFe(self):
 
@@ -654,16 +667,30 @@ class NFe310(NFe200):
 
         super(NFe310, self)._nfe_identification(
             cr, uid, ids, inv, company, nfe_environment, context)
-
-        self.nfe.infNFe.ide.idDest.valor = inv.fiscal_position.id_dest or ''
+        id_dest = '1'
+        if inv.partner_id.state_id.id != \
+           inv.company_id.state_id.id:
+            id_dest = '2'
+        if inv.partner_id.country_id.id != \
+           inv.company_id.country_id.id:
+            id_dest = '3'
+        self.nfe.infNFe.ide.idDest.valor = id_dest
         self.nfe.infNFe.ide.indFinal.valor = inv.ind_final or ''
         self.nfe.infNFe.ide.indPres.valor = inv.ind_pres or ''
         self.nfe.infNFe.ide.dhEmi.valor = datetime.strptime(inv.date_hour_invoice, '%Y-%m-%d %H:%M:%S')
         self.nfe.infNFe.ide.dhSaiEnt.valor = datetime.strptime(inv.date_in_out, '%Y-%m-%d %H:%M:%S')
         self.nfe.infNFe.ide.hSaiEnt.valor = datetime.strptime(inv.date_in_out, '%Y-%m-%d %H:%M:%S')
-        #
-        # self.nfe.infNFe.ide.hSaiEnt.valor = datetime.strptime(
-        #     inv.date_in_out[-8:], '%H:%M:%S')
+
+    def _receiver(self, cr, uid, ids, invoice, company, nfe_environment, context=None):
+        super(NFe310, self)._receiver(
+            cr, uid, ids, invoice, company, nfe_environment, context=context)
+        if invoice.partner_id.country_id.id != \
+                invoice.company_id.country_id.id:
+            self.nfe.infNFe.dest.idEstrangeiro.valor = re.sub(
+                '[^0-9]', '', invoice.partner_id.cnpj_cpf)
+            self.nfe.infNFe.dest.CNPJ.valor = None
+            self.nfe.infNFe.dest.CPF.valor = None
+            self.nfe.infNFe.dest.indIEDest.valor = '9'
 
 
     def get_NFe(self):

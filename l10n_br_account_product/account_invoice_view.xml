@@ -88,13 +88,20 @@
 	                                    <button string="Recalcular Custos" states="draft" name="%(action_l10n_br_account_product_costs_ratio)d" type="action"/>
 									</group>
 								</group>
-								<group name="package_info" string="Informações dos pacotes">
-									<field name="weight"/>
-									<field name="weight_net"/>
-									<field name="number_of_packages"/>
-									<field name="kind_of_packages"/>
-									<field name="brand_of_packages"/>
-									<field name="notation_of_packages"/>
+								<group>
+									<group name="shipping_info" string="Informações de Exportação">
+										<field name="shipping_state_id"/>
+										<field name="shipping_location"/>
+										<field name="expedition_location"/>
+									</group>
+									<group name="package_info" string="Informações dos pacotes">
+										<field name="weight"/>
+										<field name="weight_net"/>
+										<field name="number_of_packages"/>
+										<field name="kind_of_packages"/>
+										<field name="brand_of_packages"/>
+										<field name="notation_of_packages"/>
+									</group>
 								</group>
 							</page>
 						</notebook>
