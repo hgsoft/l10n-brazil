@@ -29,11 +29,6 @@
         'l10n_br_sale',
         'l10n_br_account_service',
     ],
-    'data': [
-        'l10n_br_sale_service_data.xml',
-    ],
-    'test': [],
-    'demo': [],
     'installable': True,
     'auto_install': True,
 }

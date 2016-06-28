@@ -194,10 +194,9 @@ class PurchaseOrder(models.Model):
 
         return result
 
-    # TODO ask OpenERP SA for a _prepare_invoice method!
     def action_invoice_create(self, cr, uid, ids, *args):
-        inv_id = super(PurchaseOrder, self).action_invoice_create(cr, uid,
-                                                                   ids, *args)
+        inv_id = super(PurchaseOrder, self).action_invoice_create(
+            cr, uid, ids, *args)
         for order in self.browse(cr, uid, ids):
             # REMARK: super method is ugly as it assumes only one invoice
             # for possibly several purchase orders.
@@ -294,7 +293,7 @@ class PurchaseOrderLine(models.Model):
                             fiscal_position_id=False, date_planned=False,
                             name=False, price_unit=False, state='draft', context=None):
         context = dict(context or {})
-        
+
         company_id = context.get('company_id')
         parent_fiscal_position_id = context.get('parent_fiscal_position_id')
         parent_fiscal_category_id = context.get('parent_fiscal_category_id')
@@ -384,7 +383,7 @@ class PurchaseOrderLine(models.Model):
             obj_product = self.env['product.product'].browse(
                 product_id)
             ctx = {'fiscal_type': obj_product.fiscal_type,
-                    'type_tax_use': 'purchase'}
+                   'type_tax_use': 'purchase'}
             obj_fposition = self.env['account.fiscal.position'].with_context(ctx).browse(
                 fiscal_position)
             taxes = obj_product.supplier_taxes_id or False
