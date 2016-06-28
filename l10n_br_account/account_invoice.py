@@ -44,7 +44,6 @@ JOURNAL_TYPE = {
 class AccountInvoice(models.Model):
     _inherit = 'account.invoice'
 
-
     @api.one
     @api.depends(
         'move_id.line_id'
@@ -297,13 +296,11 @@ class AccountInvoice(models.Model):
             'AND account_analytic_line.move_id = account_move_line.id',
             (ref, move_id))
 
-        #TODO Usar OpenChatter para gerar um registro que a fatura foi validada.
-        #for inv_id, name in self.name_get(cr, uid, [inv_id]):
-        #    ctx = context.copy()
-        #    if obj_inv.type in ('out_invoice', 'out_refund'):
-        #        ctx = self.get_log_context(cr, uid, context=ctx)
-        #    message = _('Invoice ') + " '" + name + "' " + _("is validated.")
-        #    self.log(cr, uid, inv_id, message, context=ctx)
+    @api.multi
+    def action_move_create(self):
+        self.button_reset_taxes()
+        return super(AccountInvoice, self).action_move_create()
+
 
     @api.multi
     def finalize_invoice_move_lines(self, move_lines):
@@ -313,7 +310,7 @@ class AccountInvoice(models.Model):
         :param invoice_browse: browsable record of the invoice that is generating the move lines
         :param move_lines: list of dictionaries with the account.move.lines (as for create())
         :return: the (possibly updated) final move_lines to create for this invoice
-        """        
+        """
         move_lines = super(AccountInvoice, self).finalize_invoice_move_lines(move_lines)
         cont=1
         result = []
@@ -479,16 +476,16 @@ class AccountInvoiceLine(models.Model):
         context.update({'use_domain': ('use_invoice', '=', True)})
         kwargs.update({'context': context})
         result['value']['cfop_id'] = False
-        
+
         fiscal_position_id = kwargs.get('fiscal_position', False)
-        
+
         if not fiscal_position_id:
             obj_fp_rule = self.env['account.fiscal.position.rule']
             result.update(obj_fp_rule.apply_fiscal_mapping(
                 result, **kwargs))
         else:
             result['value'].update({ 'fiscal_position': fiscal_position_id })
-            
+
         if result['value'].get('fiscal_position', False):
             obj_fp = self.env['account.fiscal.position'].browse(
                 result['value'].get('fiscal_position', False))
@@ -590,15 +587,16 @@ class AccountInvoiceLine(models.Model):
 
     @api.multi
     def onchange_fiscal_position(self, partner_id, company_id,
-                                product_id, fiscal_category_id,
-                                account_id, fiscal_position=False, context=None):
+                                 product_id, fiscal_category_id,
+                                 account_id, fiscal_position=False,
+                                 context=None):
         result = {'value': {}}
         return self._fiscal_position_map(
             result, context, partner_id=partner_id,
             partner_invoice_id=partner_id, company_id=company_id,
             fiscal_category_id=fiscal_category_id, product_id=product_id,
             fiscal_position=fiscal_position, account_id=account_id)
-    
+
     @api.multi
     def onchange_account_id(self, product_id, partner_id,
                             inv_type, fposition_id, account_id=False,
@@ -622,7 +620,7 @@ class AccountInvoiceLine(models.Model):
 
         result = super(AccountInvoiceLine, self).uos_id_change(
             product, uom, qty=qty, name=name, type=type, partner_id=partner_id,
-            fposition_id=fposition_id, price_unit=price_unit, currency_id=currency_id, 
+            fposition_id=fposition_id, price_unit=price_unit, currency_id=currency_id,
             company_id=company_id)
         # return self._fiscal_position_map(
         #     self._cr, self._uid, result, context, partner_id=partner_id,
