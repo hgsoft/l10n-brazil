@@ -302,8 +302,6 @@ class NFe200(FiscalDocument):
                 self.nfe.infNFe.dest.indIEDest.valor = '9'
             else:
                 self.nfe.infNFe.dest.indIEDest.valor = '2'
-            if self.nfe.infNFe.ide.indFinal.valor == '1':
-                self.nfe.infNFe.dest.indIEDest.valor = '9'
         else:
             self.nfe.infNFe.dest.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv.partner_id.cnpj_cpf or '')
             self.nfe.infNFe.dest.indIEDest.valor = '9'
