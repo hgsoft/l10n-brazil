@@ -3,27 +3,30 @@
 #                                                                             #
 # Copyright (C) 2009  Renato Lima - Akretion                                  #
 #                                                                             #
-#This program is free software: you can redistribute it and/or modify         #
-#it under the terms of the GNU Affero General Public License as published by  #
-#the Free Software Foundation, either version 3 of the License, or            #
-#(at your option) any later version.                                          #
+#  This program is free software: you can redistribute it and/or modify       #
+#  it under the terms of the GNU Affero General Public License as published   #
+#  by the Free Software Foundation, either version 3 of the License, or       #
+#  (at your option) any later version.                                        #
 #                                                                             #
-#This program is distributed in the hope that it will be useful,              #
-#but WITHOUT ANY WARRANTY; without even the implied warranty of               #
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
-#GNU Affero General Public License for more details.                          #
+#  This program is distributed in the hope that it will be useful,            #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
+#  GNU Affero General Public License for more details.                        #
 #                                                                             #
-#You should have received a copy of the GNU Affero General Public License     #
-#along with this program.  If not, see <http://www.gnu.org/licenses/>.        #
+#  You should have received a copy of the GNU Affero General Public License   #
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.      #
 ###############################################################################
 
 from openerp import api, models, fields
+
 
 class AccountJournal(models.Model):
     _inherit = 'account.journal'
 
     revenue_expense = fields.Boolean(string='Gera Financeiro',
-         help=u"Marque esta caixa para diários de faturas que gerem contas a pagar e a receber")
+                                     help=u"Marque esta caixa para diários de \
+                                     faturas que gerem contas a pagar \
+                                     e a receber")
 
 
 class AccountTaxComputation(models.Model):
@@ -35,7 +38,29 @@ class AccountTaxComputation(models.Model):
 class AccountTax(models.Model):
     _inherit = 'account.tax'
 
-    def _compute_tax(self,cr, uid, taxes, total_line, product, product_qty,
+    account_deduced_id = fields.Many2one('account.account',
+                                         string='Tax Account for Deduction')
+    account_paid_deduced_id = fields.Many2one(
+        'account.account', string='Tax Refund Account for Deduction')
+
+    @api.model
+    def _unit_compute(self, taxes,
+                      price_unit, product=None, partner=None, quantity=0):
+        data = super(AccountTax, self).\
+            _unit_compute(taxes, price_unit, product, partner, quantity)
+        for dict in data:
+            if 'id' in dict:
+                tax = self.browse(dict['id'])
+                if tax:
+                    dict.update({
+                        'account_deduced_id': tax.account_deduced_id and
+                        tax.account_deduced_id.id or False,
+                        'account_paid_deduced_id':
+                        tax.account_paid_deduced_id and
+                        tax.account_paid_deduced_id.id or False})
+        return data
+
+    def _compute_tax(self, cr, uid, taxes, total_line, product, product_qty,
                      precision):
         result = {'tax_discount': 0.0, 'taxes': []}
 
@@ -43,20 +68,25 @@ class AccountTax(models.Model):
             if tax.get('type') == 'weight' and product:
                 product_read = self.pool.get('product.product').read(
                     cr, uid, product, ['weight_net'])
-                tax['amount'] = round((product_qty * product_read.get('weight_net', 0.0)) * tax['percent'], precision)
+                tax['amount'] = round(
+                    (product_qty * product_read.get('weight_net', 0.0)) *
+                    tax['percent'], precision)
 
             if tax.get('type') == 'quantity':
                 tax['amount'] = round(product_qty * tax['percent'], precision)
 
             tax['amount'] = round(total_line * tax['percent'], precision)
-            tax['amount'] = round(tax['amount'] * (1 - tax['base_reduction']), precision)
+            tax['amount'] = round(tax['amount'] * (1 - tax['base_reduction']),
+                                  precision)
 
             if tax.get('tax_discount'):
                 result['tax_discount'] += tax['amount']
 
             if tax['percent']:
-                tax['total_base'] = round(total_line * (1 - tax['base_reduction']), precision)
-                tax['total_base_other'] = round(total_line - tax['total_base'], precision)
+                tax['total_base'] = round(
+                    total_line * (1 - tax['base_reduction']), precision)
+                tax['total_base_other'] = round(total_line - tax['total_base'],
+                                                precision)
             else:
                 tax['total_base'] = 0.00
                 tax['total_base_other'] = 0.00
@@ -65,7 +95,7 @@ class AccountTax(models.Model):
         return result
 
     @api.v7
-    def compute_all(self,cr, uid, taxes, price_unit, quantity,
+    def compute_all(self, cr, uid, taxes, price_unit, quantity,
                     product=None, partner=None, force_excluded=False,
                     fiscal_position=False, insurance_value=0.0,
                     freight_value=0.0, other_costs_value=0.0):
@@ -81,7 +111,7 @@ class AccountTax(models.Model):
             'total_base': Total Base by tax,
         }
 
-        :Parameters:            
+        :Parameters:
             - 'taxes': List with all taxes id.
             - 'price_unit': Product price unit.
             - 'quantity': Product quantity.
@@ -93,8 +123,9 @@ class AccountTax(models.Model):
         """
         obj_precision = self.pool.get('decimal.precision')
         precision = obj_precision.precision_get(cr, uid, 'Account')
-        result = super(AccountTax, self).compute_all(cr, uid, taxes,
-            price_unit, quantity, product, partner, force_excluded)
+        result = super(AccountTax, self).compute_all(
+            cr, uid, taxes, price_unit, quantity,
+            product, partner, force_excluded)
         totaldc = 0.0
         calculed_taxes = []
 
@@ -111,7 +142,7 @@ class AccountTax(models.Model):
 
         common_taxes = [tx for tx in result['taxes'] if tx['domain']]
         result_tax = self._compute_tax(cr, uid, common_taxes, result['total'],
-            product, quantity, precision)
+                                       product, quantity, precision)
         totaldc += result_tax['tax_discount']
         calculed_taxes += result_tax['taxes']
 
@@ -163,19 +194,19 @@ class WizardMultiChartsAccounts(models.TransientModel):
         chart_template_id = obj_multi.chart_template_id.id
         company_id = obj_multi.company_id.id
 
-        fp_template_ids = obj_fp_template.search(cr, uid,
-            [('chart_template_id', '=', chart_template_id)])
+        fp_template_ids = obj_fp_template.search(
+            cr, uid, [('chart_template_id', '=', chart_template_id)])
 
         for fp_template in obj_fp_template.browse(cr, uid, fp_template_ids,
                                                   context=context):
             if fp_template.cfop_id:
-                fp_id = obj_fp.search(cr, uid,
-                    [('name', '=', fp_template.name),
-                     ('company_id', '=', company_id)])
+                fp_id = obj_fp.search(
+                    cr, uid, [('name', '=', fp_template.name),
+                              ('company_id', '=', company_id)])
 
                 if fp_id:
                     obj_fp.write(cr, uid, fp_id,
-                        {'cfop_id': fp_template.cfop_id.id})
+                                 {'cfop_id': fp_template.cfop_id.id})
         return result
 
 
