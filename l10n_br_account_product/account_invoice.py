@@ -813,22 +813,25 @@ class AccountInvoiceLine(models.Model):
         }
         return result
 
-    def _get_tax_codes(self, cr, uid, product_id, fiscal_position,
-                       taxes, company_id, context=None):
-
-        context = dict(context or {})
+    @api.multi
+    def _get_tax_codes(self, product_id, fiscal_position, taxes, company_id):
         result = {}
+        ctx = dict(self.env.context)
+        ctx.update({'use_domain': ('use_invoice', '=', True)})
+
         if fiscal_position.fiscal_category_id.journal_type in ('sale',
                                                                'sale_refund'):
-            context['type_tax_use'] = 'sale'
+            ctx.update({'type_tax_use': 'sale'})
         else:
-            context['type_tax_use'] = 'purchase'
+            ctx.update({'type_tax_use': 'purchase'})
 
-        context['fiscal_type'] = fiscal_position.fiscal_category_fiscal_type
+        product = self.env['product.product'].browse(product_id)
+        ctx.update({'fiscal_type': product.fiscal_type})
+        result['cfop_id'] = fiscal_position.cfop_id.id
 
-        tax_codes = self.pool.get('account.fiscal.position').map_tax_code(
-            cr, uid, product_id, fiscal_position, company_id,
-            taxes, context=context)
+        tax_codes = fiscal_position.with_context(
+            ctx).map_tax_code(product_id, taxes, company_id)
+
         if tax_codes.get('icms', False):
             result['icms_cst_id'] = tax_codes.get('icms')
         if tax_codes.get('ipi', False):
@@ -839,35 +842,33 @@ class AccountInvoiceLine(models.Model):
             result['cofins_cst_id'] = tax_codes.get('cofins')
         return result
 
-    def _validate_taxes(self, cr, uid, values, context=None):
+    @api.multi
+    def _validate_taxes(self, values):
         """Verifica se o valor dos campos dos impostos estão sincronizados
         com os impostos do OpenERP"""
-        if not context:
-            context = {}
         original_values = values
 
-        tax_obj = self.pool.get('account.tax')
+        price_unit = values.get('price_unit', 0.0) or self.price_unit
+        discount = values.get('discount', 0.0) or self.discount
+        insurance_value = values.get(
+            'insurance_value', 0.0) or self.insurance_value
+        freight_value = values.get(
+            'freight_value', 0.0) or self.freight_value
+        other_costs_value = values.get(
+            'other_costs_value', 0.0) or self.other_costs_value
 
-        if (not values.get('product_id')
-                or not values.get('quantity')
-                or not values.get('fiscal_position')):
-            invoice_line_id = context.get('invoice_line_id', False)
-            if not invoice_line_id:
-                return {}
-            elif isinstance(invoice_line_id, (list)) and not len(invoice_line_id) == 1:
-                return {}
-            else:
-                if isinstance(invoice_line_id, (int)):
-                    invoice_line_id = [invoice_line_id]
-                old = self.read(cr, uid, invoice_line_id,[
-                    'fiscal_position', 'product_id', 'price_unit',
-                     'company_id', 'invoice_line_tax_id', 'partner_id',
-                     'quantity'])[0]
-                for aux in old:
-                    if isinstance(old[aux], (tuple)):
-                        old[aux] = old[aux][0]
-                old['invoice_line_tax_id'] = [[6, 0, old['invoice_line_tax_id']]]
-                values = dict(old.items() + values.items())
+        tax_ids = values.get('invoice_line_tax_id', [[6, 0, []]])[0][2] or \
+            self.invoice_line_tax_id.ids
+
+        partner_id = values.get('partner_id') or self.partner_id.id
+        product_id = values.get('product_id') or self.product_id.id
+        quantity = values.get('quantity') or self.quantity
+        fiscal_position = values.get(
+            'fiscal_position') or self.fiscal_position.id
+        ind_final = values.get('ind_final', False) or self.invoice_id.ind_final
+
+        if not product_id or not quantity or not fiscal_position:
+            return {}
 
         result = {
             'product_type': 'product',
@@ -875,74 +876,52 @@ class AccountInvoiceLine(models.Model):
             'fiscal_classification_id': None,
             'fci': None,
         }
-
-        if values.get('partner_id') and values.get('company_id'):
-            partner_id = values.get('partner_id')
-            company_id = values.get('company_id')
+        if self:
+            partner = self.invoice_id.partner_id
         else:
-            if values.get('invoice_id'):
-                inv = self.pool.get('account.invoice').read(
-                    cr, uid, values.get('invoice_id'),
-                    ['partner_id', 'company_id'])
+            partner = self.env['res.partner'].browse(partner_id)
 
-                partner_id = inv.get('partner_id', [False])[0]
-                company_id = inv.get('company_id', [False])[0]
+        taxes = self.env['account.tax'].browse(tax_ids)
+        fiscal_position = self.env['account.fiscal.position'].browse(
+            fiscal_position)
 
-        if not values.get('invoice_line_tax_id'):
-            return result #FIXME
-        if not values.get('ind_final'):
-            if values.get('invoice_id'):
-                ind_final = self.pool['account.invoice'].browse(
-                    cr, uid, values.get('invoice_id')).ind_final
-                values.update({ 'ind_final': ind_final })
-            elif values.get('id'):
-                ind_final = self.browse(
-                    cr, uid, values.get('id')).invoice_id.ind_final
-                values.update({ 'ind_final': ind_final })
+        price = price_unit * (1 - discount / 100.0)
 
-        taxes = tax_obj.browse(
-            cr, uid, values.get('invoice_line_tax_id')[0][2])
-        fiscal_position = self.pool.get('account.fiscal.position').browse(
-            cr, uid, values.get('fiscal_position'))
+        product = self.env['product.product'].browse(product_id)
+        if product.type == 'service':
+            result['product_type'] = 'service'
+            result['service_type_id'] = product.service_type_id.id
+        else:
+            result['product_type'] = 'product'
+        if product.ncm_id:
+            result['fiscal_classification_id'] = \
+                product.ncm_id.id
 
-        price_unit = values.get('price_unit', 0.0)
-        price = float(price_unit) * (1 - values.get('discount', 0.0) / 100.0)
+        if product.fci:
+            result['fci'] = product.fci
 
-        taxes_calculed = tax_obj.compute_all(
-            cr, uid, taxes, price, float(values.get('quantity', 0.0)),
-            values.get('product_id'), partner_id,
+        result['icms_origin'] = product.origin
+
+        taxes_calculed = taxes.compute_all(
+            price, quantity, product, partner,
             fiscal_position=fiscal_position,
-            insurance_value=values.get('insurance_value', 0.0),
-            freight_value=values.get('freight_value', 0.0),
-            other_costs_value=values.get('other_costs_value', 0.0),
-            consumidor=values.get('ind_final', False))
-
-        if values.get('product_id'):
-            obj_product = self.pool.get('product.product').browse(
-                cr, uid, values.get('product_id'), context=context)
-            if obj_product.type == 'service':
-                result['product_type'] = 'service'
-                result['service_type_id'] = obj_product.service_type_id.id
-            else:
-                result['product_type'] = 'product'
-            if obj_product.ncm_id:
-                result['fiscal_classification_id'] = obj_product.ncm_id.id
-            result['icms_origin'] = obj_product.origin
+            insurance_value=insurance_value,
+            freight_value=freight_value,
+            other_costs_value=other_costs_value,
+            consumidor=ind_final)
 
         for tax in taxes_calculed['taxes']:
             try:
                 amount_tax = getattr(
                     self, '_amount_tax_%s' % tax.get('domain', ''))
-                result.update(amount_tax(cr, uid, tax))
+                result.update(amount_tax(tax))
             except AttributeError:
                 # Caso não exista campos especificos dos impostos
                 # no documento fiscal, os mesmos são calculados.
                 continue
 
         result.update(self._get_tax_codes(
-            cr, uid, values.get('product_id'), fiscal_position,
-            values.get('invoice_line_tax_id')[0][2],
-            company_id, context=context))
+            product_id, fiscal_position, taxes, self.invoice_id.company_id))
 
         result.update(original_values)
         return result
@@ -963,17 +942,15 @@ class AccountInvoiceLine(models.Model):
                 result['value']['fci'] = obj_product.fci
         return result
 
-    def create(self, cr, uid, vals, context=None):
-        context = dict(context or {})
-        vals.update(self._validate_taxes(cr, uid, vals, context))
-        return super(AccountInvoiceLine, self).create(cr, uid, vals, context)
+    @api.model
+    def create(self, vals):
+        vals.update(self._validate_taxes(vals))
+        return super(AccountInvoiceLine, self).create(vals)
 
-    def write(self, cr, uid, ids, vals, context=None):
-        context = dict(context or {})
-        context.update({'invoice_line_id': ids})
-        vals.update(self._validate_taxes(cr, uid, vals, context))
-        return super(AccountInvoiceLine, self).write(
-            cr, uid, ids, vals, context)
+    @api.multi
+    def write(self, vals):
+        vals.update(self._validate_taxes(vals))
+        return super(AccountInvoiceLine, self).write(vals)
 
     def copy(self, cr, uid, id, default={}, context=None):
         default.update({

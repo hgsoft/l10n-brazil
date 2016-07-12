@@ -51,13 +51,13 @@ class AccountTax(models.Model):
 
             if tax.get('type') == 'quantity':
                 tax['amount'] = round(product_qty * tax['percent'], precision)
-            
+
             tax['amount'] = round(total_line * tax['percent'], precision)
             tax['amount'] = round(tax['amount'] * (1 - tax['base_reduction']), precision)
 
             if tax.get('tax_discount'):
                 result['tax_discount'] += tax['amount']
-            
+
             if tax['percent']:
                 tax['total_base'] = round(total_line * (1 - tax['base_reduction']), precision)
                 tax['total_base_other'] = round(total_line - tax['total_base'], precision)
@@ -127,7 +127,7 @@ class AccountTax(models.Model):
             'total_base': Total Base by tax,
         }
 
-        :Parameters:            
+        :Parameters:
             - 'taxes': List with all taxes id.
             - 'price_unit': Product price unit.
             - 'quantity': Product quantity.
@@ -144,7 +144,6 @@ class AccountTax(models.Model):
         totaldc =  icms_value =  0.0
         ipi_value = 0.0
         calculed_taxes = []
-
         for tax in result['taxes']:
             tax_list = [tx for tx in taxes if tx.id == tax['id']]
             if tax_list:
@@ -158,14 +157,14 @@ class AccountTax(models.Model):
 
         common_taxes = [tx for tx in result['taxes'] if tx['domain'] not in ['icms', 'icmsst', 'ipi', 'icmsinter', 'icmsfcp', 'icmsintra']]
         result_tax = self._compute_tax(cr, uid, common_taxes, result['total'],
-            product, quantity, precision)
+                                       product, quantity, precision)
         totaldc += result_tax['tax_discount']
         calculed_taxes += result_tax['taxes']
 
         # Calcula o IPI
         specific_ipi = [tx for tx in result['taxes'] if tx['domain'] == 'ipi']
         result_ipi = self._compute_tax(cr, uid, specific_ipi, result['total'],
-            product, quantity, precision)
+                                       product, quantity, precision)
         totaldc += result_ipi['tax_discount']
         calculed_taxes += result_ipi['taxes']
         for ipi in result_ipi['taxes']:
@@ -176,32 +175,36 @@ class AccountTax(models.Model):
             total_base = result['total'] + insurance_value + \
                 freight_value + other_costs_value + ipi_value
 
+            print total_base
             specific_icms_inter = [tx for tx in result['taxes']
-                                  if tx['domain'] == 'icmsinter']
+                                   if tx['domain'] == 'icmsinter']
             specific_icms_intra = [tx for tx in result['taxes']
-                                  if tx['domain'] == 'icmsintra']
+                                   if tx['domain'] == 'icmsintra']
             specific_icms_fcp = [tx for tx in result['taxes']
-                                  if tx['domain'] == 'icmsfcp']
+                                 if tx['domain'] == 'icmsfcp']
 
             if specific_icms_inter and specific_icms_intra:
-                result_icms_inter = self._compute_tax(cr, uid, specific_icms_inter, total_base,
-                                               product, quantity, precision)
-                result_icms_intra = self._compute_tax(cr, uid, specific_icms_intra, total_base,
-                                               product, quantity, precision)
+                result_icms_inter = self._compute_tax(
+                    cr, uid, specific_icms_inter, total_base,
+                    product, quantity, precision)
+                result_icms_intra = self._compute_tax(
+                    cr, uid, specific_icms_intra, total_base,
+                    product, quantity, precision)
 
                 # BASE UNICA
                 difa['vBCUFDest'] = total_base
-                #ICMS origem = [BC x ALQ INTER]
+                # ICMS origem = [BC x ALQ INTER]
                 difa['pICMSUFDest'] = specific_icms_intra[0]['percent']
                 difa['pICMSInterPart'] = 0.40
-                #ICMS interno Destino = [BC x ALQ intra]
+                # ICMS interno Destino = [BC x ALQ intra]
                 difa['pICMSInter'] = specific_icms_inter[0]['percent']
-                #ICMS destino = [BC x ALQ intra] - ICMS origem
-                icms_difa = ((difa['vBCUFDest'] * difa['pICMSUFDest'])-
+                # ICMS destino = [BC x ALQ intra] - ICMS origem
+                icms_difa = ((difa['vBCUFDest'] * difa['pICMSUFDest']) -
                              (difa['vBCUFDest'] * difa['pICMSInter']))
                 if specific_icms_fcp:
-                    result_icms_fcp = self._compute_tax(cr, uid, specific_icms_fcp, total_base,
-                                               product, quantity, precision)
+                    result_icms_fcp = self._compute_tax(
+                        cr, uid, specific_icms_fcp, total_base,
+                        product, quantity, precision)
                     # % Fundo pobreza
                     difa['pFCPUFDest'] = specific_icms_fcp[0]['percent']
                     difa['vFCPUFDest'] = difa['vBCUFDest'] * difa['pFCPUFDest']
@@ -224,7 +227,7 @@ class AccountTax(models.Model):
 
         # Calcula ICMS
         specific_icms = [tx for tx in result['taxes'] if tx['domain'] == 'icms']
-        result_icms = self._compute_tax(cr, uid, 
+        result_icms = self._compute_tax(cr, uid,
             specific_icms, total_base, product, quantity, precision)
         totaldc += result_icms['tax_discount']
         calculed_taxes += result_icms['taxes']
@@ -259,7 +262,7 @@ class AccountTax(models.Model):
             'total_tax_discount': totaldc,
             'taxes': calculed_taxes
         }
-        
+
     @api.v8
     def compute_all(self, price_unit, quantity,
                     product=None, partner=None, force_excluded=False,
@@ -271,5 +274,3 @@ class AccountTax(models.Model):
             fiscal_position=fiscal_position, insurance_value=insurance_value,
             freight_value=freight_value, other_costs_value=other_costs_value,
             consumidor=consumidor)
-
-        
