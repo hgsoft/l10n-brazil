@@ -829,8 +829,9 @@ class AccountInvoiceLine(models.Model):
         ctx.update({'fiscal_type': product.fiscal_type})
         result['cfop_id'] = fiscal_position.cfop_id.id
 
-        tax_codes = fiscal_position.with_context(
-            ctx).map_tax_code(product_id, taxes, company_id)
+        tax_codes = fiscal_position.with_context(ctx).map_tax_code(
+            product_id, fiscal_position, company_id=company_id,
+            tax_ids=taxes)
 
         if tax_codes.get('icms', False):
             result['icms_cst_id'] = tax_codes.get('icms')
@@ -846,8 +847,9 @@ class AccountInvoiceLine(models.Model):
     def _validate_taxes(self, values):
         """Verifica se o valor dos campos dos impostos estão sincronizados
         com os impostos do OpenERP"""
+        if len(self) > 1:  # Mais que 1 nada a se fazer
+            return values
         original_values = values
-
         price_unit = values.get('price_unit', 0.0) or self.price_unit
         discount = values.get('discount', 0.0) or self.discount
         insurance_value = values.get(
@@ -861,6 +863,7 @@ class AccountInvoiceLine(models.Model):
             self.invoice_line_tax_id.ids
 
         partner_id = values.get('partner_id') or self.partner_id.id
+        company_id = values.get('company_id') or self.invoice_id.company_id.id
         product_id = values.get('product_id') or self.product_id.id
         quantity = values.get('quantity') or self.quantity
         fiscal_position = values.get(
@@ -921,7 +924,7 @@ class AccountInvoiceLine(models.Model):
                 continue
 
         result.update(self._get_tax_codes(
-            product_id, fiscal_position, taxes, self.invoice_id.company_id))
+            product_id, fiscal_position, taxes.ids, company_id))
 
         result.update(original_values)
         return result

@@ -67,7 +67,6 @@ class NFe200(FiscalDocument):
 
             total_tax = 0.0
             for line in inv.tax_line:
-                print line.tax_code_id.domain
                 if line.tax_code_id.domain not in ('freight', 'insurance', 'other_costs'):
                     total_tax += line.amount
             i = 0

@@ -175,7 +175,6 @@ class AccountTax(models.Model):
             total_base = result['total'] + insurance_value + \
                 freight_value + other_costs_value + ipi_value
 
-            print total_base
             specific_icms_inter = [tx for tx in result['taxes']
                                    if tx['domain'] == 'icmsinter']
             specific_icms_intra = [tx for tx in result['taxes']
