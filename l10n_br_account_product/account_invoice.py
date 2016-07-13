@@ -984,9 +984,7 @@ class AccountInvoiceTax(models.Model):
     _inherit = "account.invoice.tax"
 
     def compute(self, cr, uid, invoice, context=None):
-        # result = super(AccountInvoiceTax, self).compute(cr, uid, invoice, context=context)
         tax_grouped = {}
-        # import pudb; pudb.set_trace()
         tax_obj = self.pool.get('account.tax')
         cur_obj = self.pool.get('res.currency')
         inv = self.pool.get('account.invoice').browse(
@@ -1061,5 +1059,4 @@ class AccountInvoiceTax(models.Model):
             t['amount'] = cur_obj.round(cr, uid, cur, t['amount'])
             t['base_amount'] = cur_obj.round(cr, uid, cur, t['base_amount'])
             t['tax_amount'] = cur_obj.round(cr, uid, cur, t['tax_amount'])
-        print tax_grouped
         return tax_grouped

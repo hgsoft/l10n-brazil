@@ -331,7 +331,6 @@ class AccountInvoice(models.Model):
         """
         move_lines = super(AccountInvoice, self).\
             finalize_invoice_move_lines(move_lines)
-        import pudb; pudb.set_trace()
         cont = 1
         result = []
         for move_line in move_lines:

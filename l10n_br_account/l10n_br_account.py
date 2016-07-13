@@ -21,7 +21,7 @@
 from openerp import api, models, fields, _
 from openerp import netsvc
 import datetime
-import pudb
+
 TYPE = [
     ('input', u'Entrada'),
     ('output', u'Saída'),
@@ -464,7 +464,6 @@ class AccountInvoiceTax(models.Model):
     def move_line_get(self, invoice_id):
         res = super(AccountInvoiceTax, self).move_line_get(invoice_id)
         inv = self.env['account.invoice'].browse(invoice_id)
-        pudb.set_trace()
         self._cr.execute(
             'SELECT * FROM account_invoice_tax WHERE invoice_id = %s',
             (invoice_id,)

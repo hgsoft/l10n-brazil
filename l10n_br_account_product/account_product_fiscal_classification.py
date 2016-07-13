@@ -296,7 +296,8 @@ class WizardAccountProductFiscalClassification(orm.TransientModel):
                         'name': fclass_template.name,
                         'description': fclass_template.description,
                         'type': fclass_template.type,
-                        'parent_id': parent_id}
+                        'parent_id': parent_id,
+                        'cest': fclass_template.cest}
                 if obj_wizard.company_id:
                     parent_ids = obj_fclass.search(cr, uid, [('name', '=', fclass_template.parent_id.name), ('company_id', '=', company_id)])
                     fclass = obj_fclass.search(cr, uid, [('name', '=', fclass_template.name), ('company_id', '=', company_id)])

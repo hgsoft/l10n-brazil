@@ -74,7 +74,7 @@ class NFe200(FiscalDocument):
             for inv_line in inv.invoice_line:
                 i += 1
                 self.det = self._get_Det()
-                
+
                 percent = 0.0
                 if inv.amount_gross > 0:
                     percent = inv_line.price_gross / inv.amount_gross
@@ -191,7 +191,7 @@ class NFe200(FiscalDocument):
             self.nfref.refNF.mod.valor = inv_related.fiscal_document_id and inv_related.fiscal_document_id.code or ''
             self.nfref.refNF.serie.valor = inv_related.serie or ''
             self.nfref.refNF.nNF.valor = inv_related.internal_number or ''
-            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie, 
+            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie,
                     inv_related.internal_number, inv_related.date)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
 
@@ -207,11 +207,11 @@ class NFe200(FiscalDocument):
                 self.nfref.refNFP.CNPJ.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv_related.cnpj_cpf or '')
             else:
                 self.nfref.refNFP.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv_related.cnpj_cpf or '')
-            
-            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie, 
+
+            info = u'NFe Ref: Série: {0} Número: {1} Emitida em: {2}|'.format(inv_related.serie,
                     inv_related.internal_number, inv_related.date)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
-            
+
         elif inv_related.document_type == 'nfe':
             self.nfref.refNFe.valor = inv_related.access_key or ''
             nfe_key = inv_related.access_key
@@ -227,7 +227,7 @@ class NFe200(FiscalDocument):
             self.nfref.refECF.mod.valor = inv_related.fiscal_document_id and inv_related.fiscal_document_id.code or ''
             self.nfref.refECF.nECF.valor = inv_related.internal_number
             self.nfref.refECF.nCOO.valor = inv_related.serie
-            info = u'NFe Ref: ECF: {0} COO: {1}|'.format(inv_related.internal_number, 
+            info = u'NFe Ref: ECF: {0} COO: {1}|'.format(inv_related.internal_number,
                     inv_related.serie)
             self.nfe.infNFe.infAdic.infCpl.valor = self.nfe.infNFe.infAdic.infCpl.valor + info
 
@@ -303,7 +303,7 @@ class NFe200(FiscalDocument):
         else:
             self.nfe.infNFe.dest.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv.partner_id.cnpj_cpf or '')
             self.nfe.infNFe.dest.indIEDest.valor = '9'
-            
+
         self.nfe.infNFe.dest.enderDest.xLgr.valor = inv.partner_id.street or ''
         self.nfe.infNFe.dest.enderDest.nro.valor = inv.partner_id.number or ''
         self.nfe.infNFe.dest.enderDest.xCpl.valor = inv.partner_id.street2 or ''
@@ -323,13 +323,12 @@ class NFe200(FiscalDocument):
         #
         # Detalhe
         #
-
         self.det.nItem.valor = i
         self.det.prod.cProd.valor = inv_line.product_id.code or ''
         self.det.prod.cEAN.valor = inv_line.product_id.ean13 or ''
         self.det.prod.xProd.valor = inv_line.product_id.name[:120] or ''
         self.det.prod.NCM.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv_line.fiscal_classification_id.name or '')[:8]
-        self.det.prod.CEST.valor = inv_line.cest or ''
+        self.det.prod.CEST.valor = re.sub('[^0-9]', '', inv_line.cest or '')
         self.det.prod.EXTIPI.valor = ''
         self.det.prod.nFCI.valor = inv_line.fci or ''
         self.det.prod.CFOP.valor = inv_line.cfop_id.code
@@ -344,7 +343,7 @@ class NFe200(FiscalDocument):
         self.det.prod.vFrete.valor = str("%.2f" % inv_line.freight_value)
         self.det.prod.vSeg.valor = str("%.2f" % inv_line.insurance_value)
         self.det.prod.vDesc.valor = str("%.2f" % inv_line.discount_value)
-        self.det.prod.vOutro.valor = str("%.2f" % inv_line.other_costs_value)        
+        self.det.prod.vOutro.valor = str("%.2f" % inv_line.other_costs_value)
         self.det.imposto.vTotTrib.valor = str("%.2f" % total_tax)
         #
         # Produto entra no total da NF-e
@@ -511,7 +510,7 @@ class NFe200(FiscalDocument):
 
         self.nfe.infNFe.transp.veicTransp.placa.valor = inv.vehicle_plate or ''
         self.nfe.infNFe.transp.veicTransp.UF.valor = inv.vehicle_state_id.code or ''
-             
+
 
     def _weight_data(self, cr, uid, ids, inv, context=None):
         #
@@ -523,10 +522,10 @@ class NFe200(FiscalDocument):
         self.vol.nVol.valor = inv.notation_of_packages or ''
         self.vol.pesoL.valor = str("%.2f" % inv.weight)
         self.vol.pesoB.valor = str("%.2f" % inv.weight_net)
-    
-    
+
+
     def _purchase_information(self, cr, uid, ids, inv, context=None):
-        
+
         # Informações de compra
         self.nfe.infNFe.compra.xPed.valor = inv.name or ''
         if self.nfe.infNFe.compra.xPed.valor:
