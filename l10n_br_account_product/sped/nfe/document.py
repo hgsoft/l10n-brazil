@@ -67,7 +67,8 @@ class NFe200(FiscalDocument):
 
             total_tax = 0.0
             for line in inv.tax_line:
-                total_tax += line.amount
+                if line.tax_code_id.domain not in ('freight', 'insurance', 'other_costs'):
+                    total_tax += line.amount
             i = 0
             remaining = Decimal(str("%.2f" % total_tax))
 
@@ -320,7 +321,7 @@ class NFe200(FiscalDocument):
         self.nfe.infNFe.dest.email.valor = inv.partner_id.email or ''
 
 
-    def _details(self, cr, uid, ids, inv, inv_line, i, total_tax,context=None):
+    def _details(self, cr, uid, ids, inv, inv_line, i, total_tax, context=None):
 
         #
         # Detalhe
