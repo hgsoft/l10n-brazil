@@ -139,9 +139,10 @@ class AccountTax(models.Model):
         """
         obj_precision = self.pool.get('decimal.precision')
         precision = obj_precision.precision_get(cr, uid, 'Account')
-        result = super(AccountTax, self).compute_all(cr, uid, taxes,
+        result = super(AccountTax, self).compute_all(
+            cr, uid, taxes,
             price_unit, quantity, product, partner, force_excluded)
-        totaldc =  icms_value =  0.0
+        totaldc = icms_value = 0.0
         ipi_value = 0.0
         calculed_taxes = []
         for tax in result['taxes']:
@@ -208,14 +209,17 @@ class AccountTax(models.Model):
                     difa['pFCPUFDest'] = specific_icms_fcp[0]['percent']
                     difa['vFCPUFDest'] = difa['vBCUFDest'] * difa['pFCPUFDest']
 
-                    result_icms_fcp['taxes'][0]['amount'] = difa['vFCPUFDest']
+                    result_icms_fcp['taxes'][0]['amount'] = \
+                        round(difa['vFCPUFDest'], 2)
                     calculed_taxes += result_icms_fcp['taxes']
 
                 difa['vICMSUFDest'] = icms_difa * difa['pICMSInterPart']
                 difa['vICMSUFRemet'] = icms_difa * (1-difa['pICMSInterPart'])
 
-                result_icms_inter['taxes'][0]['amount'] = difa['vICMSUFRemet']
-                result_icms_intra['taxes'][0]['amount'] = difa['vICMSUFDest']
+                result_icms_inter['taxes'][0]['amount'] = \
+                    round(difa['vICMSUFRemet'], 2)
+                result_icms_intra['taxes'][0]['amount'] = \
+                    round(difa['vICMSUFDest'], 2)
 
                 calculed_taxes += result_icms_inter['taxes']
                 calculed_taxes += result_icms_intra['taxes']
