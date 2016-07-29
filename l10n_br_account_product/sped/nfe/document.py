@@ -67,7 +67,8 @@ class NFe200(FiscalDocument):
 
             total_tax = 0.0
             for line in inv.tax_line:
-                total_tax += line.amount
+                if line.tax_code_id.domain not in ('freight', 'insurance', 'other_costs'):
+                    total_tax += line.amount
             i = 0
             remaining = Decimal(str("%.2f" % total_tax))
 
@@ -117,6 +118,7 @@ class NFe200(FiscalDocument):
             self._purchase_information(cr, uid, ids, inv, context)
             self._additional_information(cr, uid, ids, inv, context)
             self._total(cr, uid, ids, inv, total_tax, context)
+            self._export(cr, uid, inv, inv, context)
 
             # Gera Chave da NFe
             self.nfe.gera_nova_chave()
@@ -131,7 +133,7 @@ class NFe200(FiscalDocument):
         #
         self.nfe.infNFe.ide.cUF.valor = company.state_id and company.state_id.ibge_code or ''
         self.nfe.infNFe.ide.cNF.valor = ''
-        self.nfe.infNFe.ide.natOp.valor = inv.cfop_ids[0].small_name or ''
+        self.nfe.infNFe.ide.natOp.valor = inv.fiscal_category_id.name or ''
         self.nfe.infNFe.ide.indPag.valor = inv.payment_term and inv.payment_term.indPag or '2'
         self.nfe.infNFe.ide.mod.valor  = inv.fiscal_document_id.code or ''
         self.nfe.infNFe.ide.serie.valor = inv.document_serie_id.code or ''
@@ -276,11 +278,14 @@ class NFe200(FiscalDocument):
         if inv.partner_id.country_id.id != company.country_id.id:
             address_invoice_state_code = 'EX'
             address_invoice_city = 'Exterior'
-            partner_cep = ''
+            address_invoice_city_code = '9999999'
         else:
             address_invoice_state_code = inv.partner_id.state_id.code
             address_invoice_city = inv.partner_id.l10n_br_city_id.name or ''
-            partner_cep = re.sub('[%s]' % re.escape(string.punctuation), '', str(inv.partner_id.zip or '').replace(' ',''))
+            address_invoice_city_code = ('%s%s') % (
+                inv.partner_id.state_id.ibge_code,
+                inv.partner_id.l10n_br_city_id.ibge_code)
+            partner_cep = re.sub('[^0-9]', '', inv.partner_id.zip or '')
 
         # Se o ambiente for de teste deve ser
         # escrito na razão do destinatário
@@ -298,8 +303,6 @@ class NFe200(FiscalDocument):
                 self.nfe.infNFe.dest.indIEDest.valor = '9'
             else:
                 self.nfe.infNFe.dest.indIEDest.valor = '2'
-            if self.nfe.infNFe.ide.indFinal.valor == '1':
-                self.nfe.infNFe.dest.indIEDest.valor = '9'
         else:
             self.nfe.infNFe.dest.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv.partner_id.cnpj_cpf or '')
             self.nfe.infNFe.dest.indIEDest.valor = '9'
@@ -308,7 +311,7 @@ class NFe200(FiscalDocument):
         self.nfe.infNFe.dest.enderDest.nro.valor = inv.partner_id.number or ''
         self.nfe.infNFe.dest.enderDest.xCpl.valor = inv.partner_id.street2 or ''
         self.nfe.infNFe.dest.enderDest.xBairro.valor = inv.partner_id.district or 'Sem Bairro'
-        self.nfe.infNFe.dest.enderDest.cMun.valor = '%s%s' % (inv.partner_id.state_id.ibge_code, inv.partner_id.l10n_br_city_id.ibge_code)
+        self.nfe.infNFe.dest.enderDest.cMun.valor = address_invoice_city_code
         self.nfe.infNFe.dest.enderDest.xMun.valor = address_invoice_city
         self.nfe.infNFe.dest.enderDest.UF.valor = address_invoice_state_code
         self.nfe.infNFe.dest.enderDest.CEP.valor = partner_cep
@@ -318,7 +321,7 @@ class NFe200(FiscalDocument):
         self.nfe.infNFe.dest.email.valor = inv.partner_id.email or ''
 
 
-    def _details(self, cr, uid, ids, inv, inv_line, i, total_tax,context=None):
+    def _details(self, cr, uid, ids, inv, inv_line, i, total_tax, context=None):
 
         #
         # Detalhe
@@ -571,6 +574,15 @@ class NFe200(FiscalDocument):
         self.nfe.infNFe.total.ICMSTot.vNF.valor = str("%.2f" % inv.amount_total)
         self.nfe.infNFe.total.ICMSTot.vTotTrib.valor = str("%.2f" % total_tax)
 
+    def _export(self, cr, uid, ids, invoice, context=None):
+        "Informações de exportação"
+        self.nfe.infNFe.exporta.UFSaidaPais.valor = (
+            invoice.shipping_state_id.code or '')
+        self.nfe.infNFe.exporta.xLocExporta.valor = (
+            invoice.shipping_location or '')
+        self.nfe.infNFe.exporta.xLocDespacho.valor = (
+            invoice.expedition_location or '')
+
     def get_NFe(self):
 
         try:
@@ -653,16 +665,30 @@ class NFe310(NFe200):
 
         super(NFe310, self)._nfe_identification(
             cr, uid, ids, inv, company, nfe_environment, context)
-
-        self.nfe.infNFe.ide.idDest.valor = inv.fiscal_position.id_dest or ''
+        id_dest = '1'
+        if inv.partner_id.state_id.id != \
+           inv.company_id.state_id.id:
+            id_dest = '2'
+        if inv.partner_id.country_id.id != \
+           inv.company_id.country_id.id:
+            id_dest = '3'
+        self.nfe.infNFe.ide.idDest.valor = id_dest
         self.nfe.infNFe.ide.indFinal.valor = inv.ind_final or ''
         self.nfe.infNFe.ide.indPres.valor = inv.ind_pres or ''
         self.nfe.infNFe.ide.dhEmi.valor = datetime.strptime(inv.date_hour_invoice, '%Y-%m-%d %H:%M:%S')
         self.nfe.infNFe.ide.dhSaiEnt.valor = datetime.strptime(inv.date_in_out, '%Y-%m-%d %H:%M:%S')
         self.nfe.infNFe.ide.hSaiEnt.valor = datetime.strptime(inv.date_in_out, '%Y-%m-%d %H:%M:%S')
-        #
-        # self.nfe.infNFe.ide.hSaiEnt.valor = datetime.strptime(
-        #     inv.date_in_out[-8:], '%H:%M:%S')
+
+    def _receiver(self, cr, uid, ids, invoice, company, nfe_environment, context=None):
+        super(NFe310, self)._receiver(
+            cr, uid, ids, invoice, company, nfe_environment, context=context)
+        if invoice.partner_id.country_id.id != \
+                invoice.company_id.country_id.id:
+            self.nfe.infNFe.dest.idEstrangeiro.valor = re.sub(
+                '[^0-9]', '', invoice.partner_id.cnpj_cpf)
+            self.nfe.infNFe.dest.CNPJ.valor = None
+            self.nfe.infNFe.dest.CPF.valor = None
+            self.nfe.infNFe.dest.indIEDest.valor = '9'
 
 
     def get_NFe(self):

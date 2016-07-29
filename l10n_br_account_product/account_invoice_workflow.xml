@@ -58,12 +58,12 @@ write({'state':'cancel'})</field>
             <field name="condition">True</field>
             <field name="signal">invoice_validate</field>
         </record>
- 		
+
 
         <record id="tras_router_open" model="workflow.transition">
             <field name="act_from" ref="act_router"/>
             <field name="act_to" ref="act_sefaz_export"/>
-            <field name="condition">fiscal_document_electronic == True and issuer == '0'</field>
+            <field name="condition">fiscal_document_electronic == True and fiscal_type == 'product' and issuer == '0'</field>
         </record>
 
         <record id="tras_sefaz_export_cancel" model="workflow.transition">

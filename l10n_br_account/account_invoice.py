@@ -307,26 +307,22 @@ class AccountInvoice(models.Model):
                          = account_move_line.id',
                          (ref, move_id))
 
-        #  TODO Usar OpenChatter para gerar um registro que a fatura
-        #       foi validada.
-        #  for inv_id, name in self.name_get(cr, uid, [inv_id]):
-        #    ctx = context.copy()
-        #    if obj_inv.type in ('out_invoice', 'out_refund'):
-        #        ctx = self.get_log_context(cr, uid, context=ctx)
-        #    message = _('Invoice ') + " '" + name + "' " + _("is validated.")
-        #    self.log(cr, uid, inv_id, message, context=ctx)
+    @api.multi
+    def action_move_create(self):
+        self.button_reset_taxes()
+        return super(AccountInvoice, self).action_move_create()
 
     @api.multi
     def finalize_invoice_move_lines(self, move_lines):
         """finalize_invoice_move_lines(cr, uid, invoice, move_lines) -> move_lines
-        Hook method to be overridden in additional modules to verify and \
+        Hook method to be overridden in additional modules to verify and
         possibly alter the
         move lines to be created by an invoice, for special cases.
-        :param invoice_browse: browsable record of the invoice that \
+        :param invoice_browse: browsable record of the invoice that
         is generating the move lines
-        :param move_lines: list of dictionaries with the account.move.lines \
+        :param move_lines: list of dictionaries with the account.move.lines
         (as for create())
-        :return: the (possibly updated) final move_lines to create for this \
+        :return: the (possibly updated) final move_lines to create for this
         invoice
         """
         move_lines = super(AccountInvoice, self).\
