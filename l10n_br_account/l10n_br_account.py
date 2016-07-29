@@ -422,6 +422,7 @@ class L10n_brAccountCNAE(models.Model):
             recs = self.search([('name', operator, name)] + args, limit=limit)
         return recs.name_get()
 
+
 class L10n_brTaxDefinitionTemplate(models.Model):
     _name = 'l10n_br_tax.definition.template'
 
@@ -449,6 +450,39 @@ class L10n_brTaxDefinition(models.Model):
     company_id = fields.Many2one(
         related='tax_id.company_id', readonly=True,
         store=True, string='Empresa')
+
+
+class AccountInvoiceTax(models.Model):
+
+    _inherit = "account.invoice.tax"
+
+    deduction_account_id = fields.Many2one('account.account',
+                                           'Tax Account for Deduction')
+
+    @api.model
+    # create counterpart credit tax
+    def move_line_get(self, invoice_id):
+        res = super(AccountInvoiceTax, self).move_line_get(invoice_id)
+        inv = self.env['account.invoice'].browse(invoice_id)
+        self._cr.execute(
+            'SELECT * FROM account_invoice_tax WHERE invoice_id = %s',
+            (invoice_id,)
+        )
+        for row in self._cr.dictfetchall():
+            if row['amount'] and row['tax_code_id'] and\
+                    row['tax_amount'] and row['deduction_account_id']:
+                res.append({
+                    'type': 'tax',
+                    'name': row['name'],
+                    'price_unit': row['amount'],
+                    'quantity': 1,
+                    'price': -row['amount'] or 0.0,
+                    'account_id': row['deduction_account_id'],
+                    'tax_code_id': False,
+                    'tax_amount': False,
+                    'account_analytic_id': row['account_analytic_id'],
+                })
+        return res
 
     def onchange_tax_id(self, cr, uid, ids, tax_id=False, context=None):
         tax_domain = False

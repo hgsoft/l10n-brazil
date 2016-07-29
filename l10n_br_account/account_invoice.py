@@ -3,18 +3,18 @@
 #                                                                             #
 # Copyright (C) 2009  Renato Lima - Akretion                                  #
 #                                                                             #
-#This program is free software: you can redistribute it and/or modify         #
-#it under the terms of the GNU Affero General Public License as published by  #
-#the Free Software Foundation, either version 3 of the License, or            #
-#(at your option) any later version.                                          #
+#  This program is free software: you can redistribute it and/or modify       #
+#  it under the terms of the GNU Affero General Public License as published   #
+#  by the Free Software Foundation, either version 3 of the License, or       #
+#  (at your option) any later version.                                        #
 #                                                                             #
-#This program is distributed in the hope that it will be useful,              #
-#but WITHOUT ANY WARRANTY; without even the implied warranty of               #
-#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
-#GNU Affero General Public License for more details.                          #
+#  This program is distributed in the hope that it will be useful,            #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of             #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              #
+#  GNU Affero General Public License for more details.                        #
 #                                                                             #
-#You should have received a copy of the GNU Affero General Public License     #
-#along with this program.  If not, see <http://www.gnu.org/licenses/>.        #
+#  You should have received a copy of the GNU Affero General Public License   #
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.      #
 ###############################################################################
 
 from lxml import etree
@@ -51,9 +51,9 @@ class AccountInvoice(models.Model):
     def _get_receivable_lines(self):
         if self.move_id:
             data_lines = [x for x in self.move_id.line_id if (
-                x.account_id.id == self.account_id.id
-                and x.account_id.type in ('receivable', 'payable')
-                and self.journal_id.revenue_expense)]
+                x.account_id.id == self.account_id.id and x.account_id.type
+                in ('receivable', 'payable') and
+                self.journal_id.revenue_expense)]
             New_ids = []
             for line in data_lines:
                 New_ids.append(line.id)
@@ -61,16 +61,18 @@ class AccountInvoice(models.Model):
             self.move_line_receivable_id = New_ids
 
     def _default_fiscal_document(self):
-        fiscal_document_serie = self.env.user.company_id.document_serie_service_id
+        fiscal_document_serie = self.env.user.company_id.\
+            document_serie_service_id
         return fiscal_document_serie.fiscal_document_id
 
     def _default_fiscal_document_serie(self):
-        fiscal_document_serie = self.env.user.company_id.document_serie_service_id
+        fiscal_document_serie = self.env.user.\
+            company_id.document_serie_service_id
         return fiscal_document_serie
 
     issuer = fields.Selection(
         [('0', u'Emissão própria'),
-        ('1', 'Terceiros')], string='Emitente', readonly=True,
+         ('1', 'Terceiros')], string='Emitente', readonly=True,
         states={'draft': [('readonly', False)]}, default=0)
     internal_number = fields.Char(
         string='Invoice Number', size=32, readonly=True,
@@ -91,10 +93,12 @@ class AccountInvoice(models.Model):
         'l10n_br_account.document.serie', string=u'Série',
         domain="[('fiscal_document_id', '=', fiscal_document_id),\
         ('company_id','=',company_id)]", readonly=True,
-        states={'draft': [('readonly', False)]}, default=_default_fiscal_document_serie)
+        states={'draft': [('readonly', False)]},
+        default=_default_fiscal_document_serie)
     fiscal_document_id = fields.Many2one(
         'l10n_br_account.fiscal.document', string='Documento', readonly=True,
-        states={'draft': [('readonly', False)]}, default=_default_fiscal_document)
+        states={'draft': [('readonly', False)]},
+        default=_default_fiscal_document)
     fiscal_document_electronic = fields.Boolean(
         related='fiscal_document_id.electronic', type='boolean', readonly=True,
         store=True, string='Electronic')
@@ -119,7 +123,7 @@ class AccountInvoice(models.Model):
             if not invoice.number:
                 continue
             fiscal_document = invoice.fiscal_document_id and \
-            invoice.fiscal_document_id.id or False
+                invoice.fiscal_document_id.id or False
             domain.extend([('internal_number', '=', invoice.number),
                            ('fiscal_type', '=', invoice.fiscal_type),
                            ('fiscal_document_id', '=', fiscal_document)
@@ -127,14 +131,15 @@ class AccountInvoice(models.Model):
             if invoice.issuer == '0':
                 domain.extend(
                     [('company_id', '=', invoice.company_id.id),
-                    ('internal_number', '=', invoice.number),
-                    ('fiscal_document_id', '=', invoice.fiscal_document_id.id),
-                    ('issuer', '=', '0')])
+                        ('internal_number', '=', invoice.number),
+                        ('fiscal_document_id', '=',
+                            invoice.fiscal_document_id.id),
+                        ('issuer', '=', '0')])
             else:
                 domain.extend(
                     [('partner_id', '=', invoice.partner_id.id),
-                    ('vendor_serie', '=', invoice.vendor_serie),
-                    ('issuer', '=', '1')])
+                        ('vendor_serie', '=', invoice.vendor_serie),
+                        ('issuer', '=', '1')])
 
             invoice_id = self.pool.get('account.invoice').search(
                 cr, uid, domain)
@@ -144,12 +149,12 @@ class AccountInvoice(models.Model):
 
     _constraints = [
         (_check_invoice_number,
-        u"Error!\nNão é possível registrar \
-        documentos fiscais com números repetidos.",
-        ['number']),
+            u"Error!\nNão é possível registrar \
+            documentos fiscais com números repetidos.",
+            ['number']),
     ]
 
-    #TODO - Melhorar esse método!
+    #  TODO - Melhorar esse método!
     def fields_view_get(self, cr, uid, view_id=None, view_type=False,
                         context=None, toolbar=False, submenu=False):
         result = super(AccountInvoice, self).fields_view_get(
@@ -206,7 +211,8 @@ class AccountInvoice(models.Model):
             doc = etree.XML(result['arch'])
             nodes = doc.xpath("//field[@name='partner_id']")
             partner_string = _('Customer')
-            if context.get('type', 'out_invoice') in ('in_invoice', 'in_refund'):
+            if context.get('type', 'out_invoice')\
+                    in ('in_invoice', 'in_refund'):
                 partner_string = _('Supplier')
             for node in nodes:
                 node.set('string', partner_string)
@@ -260,9 +266,10 @@ class AccountInvoice(models.Model):
                 invalid_number = self.pool.get(
                     'l10n_br_account.invoice.invalid.number').search(
                         cr, uid, [
-                        ('number_start', '<=', sequence_read['number_next']),
-                        ('number_end', '>=', sequence_read['number_next']),
-                        ('state', '=', 'done')])
+                            ('number_start', '<=',
+                                sequence_read['number_next']),
+                            ('number_end', '>=', sequence_read['number_next']),
+                            ('state', '=', 'done')])
 
                 if invalid_number:
                     raise orm.except_orm(
@@ -271,13 +278,16 @@ class AccountInvoice(models.Model):
                             sequence_read['number_next'],
                             inv.document_serie_id.name))
 
-                seq_no = sequence.get_id(cr, uid, inv.document_serie_id.internal_sequence_id.id, context=context)
-                self.write(cr, uid, inv.id, {'ref': seq_no, 'internal_number': seq_no})
+                seq_no = sequence.get_id(
+                    cr, uid, inv.document_serie_id.internal_sequence_id.id,
+                    context=context)
+                self.write(cr, uid, inv.id, {'ref': seq_no,
+                                             'internal_number': seq_no})
         return True
 
     @api.one
     def action_number(self):
-        # #TODO: not correct fix but required a frech values before reading it.
+        # TODO: not correct fix but required a frech values before reading it.
         # self.write(cr, uid, ids, {}) #removed: luisfelipemileo
 
         inv_id = self.id
@@ -285,40 +295,46 @@ class AccountInvoice(models.Model):
         ref = self.internal_number or self.reference or ''
 
         self._cr.execute('UPDATE account_move SET ref=%s '
-            'WHERE id=%s AND (ref is null OR ref = \'\')',
-                (ref, move_id))
+                         'WHERE id=%s AND (ref is null OR ref = \'\')',
+                         (ref, move_id))
         self._cr.execute('UPDATE account_move_line SET ref=%s '
-            'WHERE move_id=%s AND (ref is null OR ref = \'\')',
-            (ref, move_id))
+                         'WHERE move_id=%s AND (ref is null OR ref = \'\')',
+                         (ref, move_id))
         self._cr.execute('UPDATE account_analytic_line SET ref=%s '
-            'FROM account_move_line '
-            'WHERE account_move_line.move_id = %s '
-            'AND account_analytic_line.move_id = account_move_line.id',
-            (ref, move_id))
+                         'FROM account_move_line '
+                         'WHERE account_move_line.move_id = %s '
+                         'AND account_analytic_line.move_id \
+                         = account_move_line.id',
+                         (ref, move_id))
 
     @api.multi
     def action_move_create(self):
         self.button_reset_taxes()
         return super(AccountInvoice, self).action_move_create()
 
-
     @api.multi
     def finalize_invoice_move_lines(self, move_lines):
         """finalize_invoice_move_lines(cr, uid, invoice, move_lines) -> move_lines
-        Hook method to be overridden in additional modules to verify and possibly alter the
+        Hook method to be overridden in additional modules to verify and
+        possibly alter the
         move lines to be created by an invoice, for special cases.
-        :param invoice_browse: browsable record of the invoice that is generating the move lines
-        :param move_lines: list of dictionaries with the account.move.lines (as for create())
-        :return: the (possibly updated) final move_lines to create for this invoice
+        :param invoice_browse: browsable record of the invoice that
+        is generating the move lines
+        :param move_lines: list of dictionaries with the account.move.lines
+        (as for create())
+        :return: the (possibly updated) final move_lines to create for this
+        invoice
         """
-        move_lines = super(AccountInvoice, self).finalize_invoice_move_lines(move_lines)
-        cont=1
+        move_lines = super(AccountInvoice, self).\
+            finalize_invoice_move_lines(move_lines)
+        cont = 1
         result = []
         for move_line in move_lines:
             if (move_line[2]['debit'] or move_line[2]['credit']):
                 if (move_line[2]['account_id'] == self.account_id.id):
-                    move_line[2]['name'] = '%s/%s' % ( self.internal_number, cont)
-                    cont +=1
+                    move_line[2]['name'] = '%s/%s' %\
+                        (self.internal_number, cont)
+                    cont += 1
                 result.append(move_line)
         return result
 
@@ -390,7 +406,7 @@ class AccountInvoice(models.Model):
             partner_invoice_id=partner_id, company_id=company_id,
             fiscal_category_id=fiscal_category_id)
 
-    #TODO: Fix this method to avoid erros with document_serie_product_ids
+    #  TODO: Fix this method to avoid erros with document_serie_product_ids
     def onchange_fiscal_document_id(self, cr, uid, ids, fiscal_document_id,
                                     company_id, issuer, fiscal_type,
                                     context=None):
@@ -398,11 +414,11 @@ class AccountInvoice(models.Model):
         if not context:
             context = {}
         company = self.pool.get('res.company').browse(cr, uid, company_id,
-            context=context)
+                                                      context=context)
 
         if issuer == '0':
             serie = company.document_serie_service_id and \
-            company.document_serie_service_id.id or False
+                company.document_serie_service_id.id or False
             result['value']['document_serie_id'] = serie
 
         return result
@@ -411,7 +427,6 @@ class AccountInvoice(models.Model):
 class AccountInvoiceLine(models.Model):
     _inherit = 'account.invoice.line'
 
-
     @api.one
     @api.depends('price_unit', 'discount', 'invoice_line_tax_id', 'quantity',
                  'product_id', 'invoice_id.partner_id',
@@ -419,13 +434,16 @@ class AccountInvoiceLine(models.Model):
     def _compute_price(self):
         price = self.price_unit * (1 - (self.discount or 0.0) / 100.0)
         taxes = self.invoice_line_tax_id.compute_all(
-            price, self.quantity, product=self.product_id, partner=self.invoice_id.partner_id,
+            price, self.quantity, product=self.product_id, partner=self.
+            invoice_id.partner_id,
             fiscal_position=self.fiscal_position)
         self.price_subtotal = taxes['total'] - taxes['total_tax_discount']
         self.price_total = taxes['total']
         if self.invoice_id:
-            self.price_subtotal = self.invoice_id.currency_id.round(self.price_subtotal)
-            self.price_total = self.invoice_id.currency_id.round(self.price_total)
+            self.price_subtotal = self.invoice_id.currency_id.round(
+                self.price_subtotal)
+            self.price_total = self.invoice_id.currency_id.round(self.
+                                                                 price_total)
 
     fiscal_category_id = fields.Many2one(
         'l10n_br_account.fiscal.category', string='Categoria')
@@ -451,13 +469,14 @@ class AccountInvoiceLine(models.Model):
             eview = etree.fromstring(result['arch'])
 
             if 'type' in context.keys():
-                fiscal_categories = eview.xpath("//field[@name='fiscal_category_id']")
+                fiscal_categories = eview.xpath(
+                    "//field[@name='fiscal_category_id']")
                 for fiscal_category_id in fiscal_categories:
                     fiscal_category_id.set(
                         'domain', """[('type', '=', '%s'),
                         ('journal_type', '=', '%s')]"""
                         % (OPERATION_TYPE[context['type']],
-                        JOURNAL_TYPE[context['type']]))
+                            JOURNAL_TYPE[context['type']]))
                     fiscal_category_id.set('required', '1')
 
             # product_ids = eview.xpath("//field[@name='product_id']")
@@ -484,7 +503,7 @@ class AccountInvoiceLine(models.Model):
             result.update(obj_fp_rule.apply_fiscal_mapping(
                 result, **kwargs))
         else:
-            result['value'].update({ 'fiscal_position': fiscal_position_id })
+            result['value'].update({'fiscal_position': fiscal_position_id})
 
         if result['value'].get('fiscal_position', False):
             obj_fp = self.env['account.fiscal.position'].browse(
@@ -523,11 +542,13 @@ class AccountInvoiceLine(models.Model):
                           currency_id=False, company_id=False,
                           context=None):
 
-        parent_fiscal_category_id = self._context.get('fiscal_category_id', False)
+        parent_fiscal_category_id = self._context.get(
+            'fiscal_category_id', False)
         parent_fposition_id = self._context.get('fiscal_category_id', False)
         result = super(AccountInvoiceLine, self).product_id_change(
             product, uom, qty=qty, name=name, type=type, partner_id=partner_id,
-            fposition_id=fposition_id, price_unit=price_unit, currency_id=currency_id,
+            fposition_id=fposition_id, price_unit=price_unit,
+            currency_id=currency_id,
             company_id=company_id)
         fiscal_position = fposition_id or parent_fposition_id or False
 
@@ -542,7 +563,8 @@ class AccountInvoiceLine(models.Model):
 
         result['value']['fiscal_category_id'] = parent_fiscal_category_id
 
-        result = self._fiscal_position_map(result, context,
+        result = self._fiscal_position_map(
+            result, context,
             partner_id=partner_id, partner_invoice_id=partner_id,
             company_id=company_id, product_id=product,
             fiscal_category_id=parent_fiscal_category_id,
@@ -555,18 +577,21 @@ class AccountInvoiceLine(models.Model):
             'quantity': qty,
             'price_unit': price_unit,
             'fiscal_position': result['value'].get('fiscal_position'),
-            'invoice_line_tax_id': [[6, 0, result['value'].get('invoice_line_tax_id')]],
+            'invoice_line_tax_id': [[6, 0, result['value'].
+                                     get('invoice_line_tax_id')]],
         }
         result['value'].update(self._validate_taxes(values))
         if product:
             obj_product = self.env['product.product'].browse(product)
             if obj_product.fiscal_type == 'service':
                 result['value']['product_type'] = 'service'
-                result['value']['service_type_id'] = obj_product.service_type_id.id
+                result['value']['service_type_id'] =\
+                    obj_product.service_type_id.id
             else:
                 result['value']['product_type'] = 'product'
             if obj_product.ncm_id:
-                result['value']['fiscal_classification_id'] = obj_product.ncm_id.id
+                result['value']['fiscal_classification_id'] =\
+                    obj_product.ncm_id.id
             else:
                 result['value']['fiscal_classification_id'] = None
 
@@ -606,7 +631,8 @@ class AccountInvoiceLine(models.Model):
             product_id, partner_id, inv_type, fposition_id, account_id)
         if not result:
             result = {'value': {}}
-        result = self._fiscal_position_map(result, context, partner_id=partner_id,
+        result = self._fiscal_position_map(
+            result, context, partner_id=partner_id,
             partner_invoice_id=partner_id, company_id=company_id,
             fiscal_category_id=fiscal_category_id, product_id=product_id,
             account_id=account_id)
@@ -614,14 +640,14 @@ class AccountInvoiceLine(models.Model):
 
     @api.multi
     def uos_id_change(self, product, uom, qty=0, name='',
-                    type='out_invoice', partner_id=False, fposition_id=False,
-                    price_unit=False, currency_id=False, context=None,
-                    company_id=None, fiscal_category_id=False):
+                      type='out_invoice', partner_id=False, fposition_id=False,
+                      price_unit=False, currency_id=False, context=None,
+                      company_id=None, fiscal_category_id=False):
 
         result = super(AccountInvoiceLine, self).uos_id_change(
             product, uom, qty=qty, name=name, type=type, partner_id=partner_id,
-            fposition_id=fposition_id, price_unit=price_unit, currency_id=currency_id,
-            company_id=company_id)
+            fposition_id=fposition_id, price_unit=price_unit,
+            currency_id=currency_id, company_id=company_id)
         # return self._fiscal_position_map(
         #     self._cr, self._uid, result, context, partner_id=partner_id,
         #     partner_invoice_id=partner_id, company_id=company_id,
