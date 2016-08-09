@@ -94,6 +94,14 @@ class AccountInvoice(models.Model):
             result[tax.invoice_id.id] = True
         return list(result.keys())
 
+    @api.multi
+    @api.depends('create_uid')
+    def _compute_nfe_code(self):
+        for item in self:
+            item.nfe_code = "%08d" % (abs(hash(str(item.id))) % (10 ** 8))
+
+    nfe_code = fields.Char(string="Código Numérico", size=8, readonly=True,
+                           compute='_compute_nfe_code', store=True)
     nfe_version = fields.Selection(
         [('1.10', '1.10'), ('2.00', '2.00'), ('3.10', '3.10')],
         u'Versão NFe', readonly=True,
@@ -994,7 +1002,7 @@ class AccountInvoiceTax(models.Model):
                 val['manual'] = False
                 val['sequence'] = tax['sequence']
                 val['base'] = tax.get('total_base', 0.0)
-                val['deduction_account_id'] = tax['account_deduced_id']
+                val['deduction_account_id'] = tax.get('account_deduced_id', False)
                 if inv.type in ('out_invoice', 'in_invoice'):
                     val['base_code_id'] = tax['base_code_id']
                     val['tax_code_id'] = tax['tax_code_id']

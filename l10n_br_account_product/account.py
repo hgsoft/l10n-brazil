@@ -155,6 +155,8 @@ class AccountTax(models.Model):
             tax['base_reduction'] = tax_brw.base_reduction
             tax['amount_mva'] = tax_brw.amount_mva
             tax['tax_discount'] = tax_brw.base_code_id.tax_discount
+            tax['account_deduced_id'] = tax_brw.account_deduced_id.id
+            tax['account_paid_deduced_id'] = tax_brw.account_paid_deduced_id.id
 
         common_taxes = [tx for tx in result['taxes'] if tx['domain'] not in ['icms', 'icmsst', 'ipi', 'icmsinter', 'icmsfcp', 'icmsintra']]
         result_tax = self._compute_tax(cr, uid, common_taxes, result['total'],

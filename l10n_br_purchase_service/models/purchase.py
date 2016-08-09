@@ -18,6 +18,8 @@ class PurchaseOrder(models.Model):
 
             for line in po.order_line:
                 if line.product_id.fiscal_type == 'service':
+                    # Corrigir aqui, pode ter mais de uma fatura vinculada
+                    # quando cancela o pedido
                     lines_service.append(line.invoice_lines.id)
             if len(lines_service) > 0:
                 inv_data = po._prepare_invoice(po, lines_service)
