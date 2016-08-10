@@ -379,14 +379,17 @@ class NFe200(FiscalDocument):
             self.det.imposto.ICMS.vICMSST.valor = str("%.2f" % inv_line.icms_st_value)
 
             # Informação do ICMS Interestadual nas vendas para consumidor final
-            self.det.imposto.ICMSUFDest.vBCUFDest.valor = str("%.2f" % inv_line.vBCUFDest)
-            self.det.imposto.ICMSUFDest.pFCPUFDest.valor = str("%.2f" % inv_line.pFCPUFDest)
-            self.det.imposto.ICMSUFDest.pICMSUFDest.valor = str("%.2f" % inv_line.pICMSUFDest)
-            self.det.imposto.ICMSUFDest.pICMSInter.valor = str("%.2f" % inv_line.pICMSInter)
-            self.det.imposto.ICMSUFDest.pICMSInterPart.valor = str("%.2f" % inv_line.pICMSInterPart)
-            self.det.imposto.ICMSUFDest.vFCPUFDest.valor = str("%.2f" % inv_line.vFCPUFDest)
-            self.det.imposto.ICMSUFDest.vICMSUFDest.valor = str("%.2f" % inv_line.vICMSUFDest)
-            self.det.imposto.ICMSUFDest.vICMSUFRemet.valor = str("%.2f" % inv_line.vICMSUFRemet)
+            if self.nfe.infNFe.ide.idDest.valor == '2' and \
+               self.nfe.infNFe.ide.indFinal.valor == '1' and \
+               self.nfe.infNFe.dest.indIEDest.valor == '9':
+                self.det.imposto.ICMSUFDest.vBCUFDest.valor = str("%.2f" % inv_line.vBCUFDest)
+                self.det.imposto.ICMSUFDest.pFCPUFDest.valor = str("%.2f" % inv_line.pFCPUFDest)
+                self.det.imposto.ICMSUFDest.pICMSUFDest.valor = str("%.2f" % inv_line.pICMSUFDest)
+                self.det.imposto.ICMSUFDest.pICMSInter.valor = str("%.2f" % (inv_line.pICMSInter or 7.0))
+                self.det.imposto.ICMSUFDest.pICMSInterPart.valor = str("%.2f" % (inv_line.pICMSInterPart or 40))
+                self.det.imposto.ICMSUFDest.vFCPUFDest.valor = str("%.2f" % inv_line.vFCPUFDest)
+                self.det.imposto.ICMSUFDest.vICMSUFDest.valor = str("%.2f" % inv_line.vICMSUFDest)
+                self.det.imposto.ICMSUFDest.vICMSUFRemet.valor = str("%.2f" % inv_line.vICMSUFRemet)
 
             # IPI
             self.det.imposto.IPI.CST.valor = inv_line.ipi_cst_id.code
