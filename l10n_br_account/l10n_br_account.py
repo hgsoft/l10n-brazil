@@ -372,10 +372,19 @@ class L10n_brAccountPartnerFiscalType(models.Model):
     code = fields.Char(u'Código', size=16, required=True)
     name = fields.Char(u'Descrição', size=64)
     is_company = fields.Boolean(string='Pessoa Juridica?')
-    default = fields.Boolean(u'Tipo Fiscal Padrão',
-                             help="Tipo padrão utilizado ao se registrar um novo parceiro!")
+    default = fields.Boolean(
+        u'Tipo Fiscal Padrão',
+        help="Tipo padrão utilizado ao se registrar um novo parceiro!")
     icms = fields.Boolean('Recupera ICMS')
     ipi = fields.Boolean('Recupera IPI')
+    indicador_ie_dest = fields.Selection(
+        [('1', '1 - Contribuinte ICMS'),
+         ('2', '2 - Contribuinte isento de Inscrição no cadastro de \
+                Contribuintes do ICMS'),
+         ('9', '9 - Não Contribuinte, que pode ou não possuir Inscrição \
+                Estadual no Cadastro de Contribuintes do ICMS')],
+        string="Indicador IE"
+    )
 
     @api.one
     @api.constrains('default')

@@ -307,6 +307,7 @@ class NFe200(FiscalDocument):
             self.nfe.infNFe.dest.CPF.valor = re.sub('[%s]' % re.escape(string.punctuation), '', inv.partner_id.cnpj_cpf or '')
             self.nfe.infNFe.dest.indIEDest.valor = '9'
 
+        self.nfe.infNFe.dest.indIEDest.valor = inv.partner_id.partner_fiscal_type_id.indicador_ie_dest or self.nfe.infNFe.dest.indIEDest.valor
         self.nfe.infNFe.dest.enderDest.xLgr.valor = inv.partner_id.street or ''
         self.nfe.infNFe.dest.enderDest.nro.valor = inv.partner_id.number or ''
         self.nfe.infNFe.dest.enderDest.xCpl.valor = inv.partner_id.street2 or ''
