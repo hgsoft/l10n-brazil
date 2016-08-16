@@ -39,9 +39,9 @@ class AccountTax(models.Model):
     _inherit = 'account.tax'
 
     account_deduced_id = fields.Many2one('account.account',
-                                         string='Tax Account for Deduction')
+                                         string='Conta de Dedução de Imposto')
     account_paid_deduced_id = fields.Many2one(
-        'account.account', string='Tax Refund Account for Deduction')
+        'account.account', string='Conta de Reembolso de Imposto')
 
     @api.model
     def _unit_compute(self, taxes,

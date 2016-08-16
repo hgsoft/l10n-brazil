@@ -21,6 +21,8 @@
 from openerp import api, models, fields, _
 from openerp import netsvc
 import datetime
+from openerp.exceptions import Warning as UserError
+
 
 TYPE = [
     ('input', u'Entrada'),
@@ -465,7 +467,7 @@ class AccountInvoiceTax(models.Model):
     _inherit = "account.invoice.tax"
 
     deduction_account_id = fields.Many2one('account.account',
-                                           'Tax Account for Deduction')
+                                           'Conta de Dedução de Imposto')
 
     @api.model
     # create counterpart credit tax
@@ -473,8 +475,17 @@ class AccountInvoiceTax(models.Model):
         res = super(AccountInvoiceTax, self).move_line_get(invoice_id)
         inv = self.env['account.invoice'].browse(invoice_id)
         for tax in inv.tax_line:
+            tax_id = self.env['account.tax'].browse(tax.id)
+            if tax.tax_code_id.domain in ('icms', 'pis', 'issqn', 'ipi',
+                                          'cofins', 'irpj', 'ir', 'csll')\
+                    and not tax_id.account_deduced_id and not\
+                    tax_id.account_paid_deduced_id:
+                raise UserError(
+                    _("Conta de Dedução de Imposto e Conta de Reembolso de \
+                      Imposto não podem estar vazias."))
             if tax.amount and tax.tax_code_id and\
                     tax.tax_amount and tax.deduction_account_id:
+
                 res.append({
                     'type': 'tax',
                     'name': tax.name,
