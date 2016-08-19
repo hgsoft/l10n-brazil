@@ -364,6 +364,7 @@ class NFe200(FiscalDocument):
                 self.det.imposto.ICMS.pCredSN.valor = str("%.2f" % inv_line.icms_percent)
                 self.det.imposto.ICMS.vCredICMSSN.valor = str("%.2f" % inv_line.icms_value)
 
+            self.det.imposto.ICMS.orig.valor = inv_line.icms_origin or '0'
             self.det.imposto.ICMS.CST.valor = inv_line.icms_cst_id.code
             self.det.imposto.ICMS.modBC.valor = inv_line.icms_base_type
             self.det.imposto.ICMS.vBC.valor = str("%.2f" % inv_line.icms_base)
@@ -386,7 +387,7 @@ class NFe200(FiscalDocument):
                 self.det.imposto.ICMSUFDest.vBCUFDest.valor = str("%.2f" % inv_line.vBCUFDest)
                 self.det.imposto.ICMSUFDest.pFCPUFDest.valor = str("%.2f" % inv_line.pFCPUFDest)
                 self.det.imposto.ICMSUFDest.pICMSUFDest.valor = str("%.2f" % inv_line.pICMSUFDest)
-                self.det.imposto.ICMSUFDest.pICMSInter.valor = str("%.2f" % (inv_line.pICMSInter or 7.0))
+                self.det.imposto.ICMSUFDest.pICMSInter.valor = str("%.2f" % (inv_line.pICMSInter or 4.0))
                 self.det.imposto.ICMSUFDest.pICMSInterPart.valor = str("%.2f" % (inv_line.pICMSInterPart or 40))
                 self.det.imposto.ICMSUFDest.vFCPUFDest.valor = str("%.2f" % inv_line.vFCPUFDest)
                 self.det.imposto.ICMSUFDest.vICMSUFDest.valor = str("%.2f" % inv_line.vICMSUFDest)
