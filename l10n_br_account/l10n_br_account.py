@@ -460,6 +460,13 @@ class L10n_brTaxDefinition(models.Model):
         related='tax_id.company_id', readonly=True,
         store=True, string='Empresa')
 
+    def onchange_tax_id(self, cr, uid, ids, tax_id=False, context=None):
+        tax_domain = False
+        if tax_id:
+            tax_domain = self.pool.get('account.tax').read(
+                cr, uid, tax_id, ['domain'], context=context)['domain']
+        return {'value': {'tax_domain': tax_domain}}
+
 
 class AccountInvoiceTax(models.Model):
     _inherit = "account.invoice.tax"
@@ -487,10 +494,3 @@ class AccountInvoiceTax(models.Model):
                     'account_analytic_id': tax.account_analytic_id.id,
                 })
         return res
-
-    def onchange_tax_id(self, cr, uid, ids, tax_id=False, context=None):
-        tax_domain = False
-        if tax_id:
-            tax_domain = self.pool.get('account.tax').read(
-                cr, uid, tax_id, ['domain'], context=context)['domain']
-        return {'value': {'tax_domain': tax_domain}}
